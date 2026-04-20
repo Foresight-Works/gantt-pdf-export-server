@@ -1,5 +1,5 @@
 const express = require('express');
-const addRequestId = require('express-request-id').default;
+const addRequestId = require('express-request-id');
 const bodyParser = require('body-parser');
 const { nanoid } = require('nanoid');
 const http = require('http');

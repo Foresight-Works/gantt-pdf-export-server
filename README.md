@@ -102,7 +102,9 @@ needing a Node.js environment.
 
 */10 * * * *  /home/rnd/Work/gantt-pdf-export-server/checkGantPrint.sh >> /home/rnd/Work/gantt-pdf-export-server/log/checkGantPrint.log 2>&1
 
-
+5. ** Resorce
+   mkdir /home/rnd/Work/gantt-pdf-export-server/resource
+   cp /var/www/html/themes /home/rnd/Work/gantt-pdf-export-server/resource/  
 
 ## Links
 - [Architecture](docs/architecture.md)

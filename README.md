@@ -98,6 +98,12 @@ needing a Node.js environment.
    ./dist/pdf-export-server*
    ```
 
+4. **Crontab 
+
+*/10 * * * *  /home/rnd/Work/gantt-pdf-export-server/checkGantPrint.sh >> /home/rnd/Work/gantt-pdf-export-server/log/checkGantPrint.log 2>&1
+
+
+
 ## Links
 - [Architecture](docs/architecture.md)
 - [Server protocol](docs/protocol.md)

@@ -203,9 +203,14 @@ module.exports = class WebServer extends ExportServer {
             }
             else {
                 //Send the url for the cached file, will is cached for 10 seconds
+               
+                const host = req.get('host');
+                const isLocalhost = host && (host === 'localhost' || req.body.clientURL.includes('localhost:'));
+                const basePath = isLocalhost ? '/' : '/exportPdf/';
+               
                 res.status(200).jsonp({
                     success : true,
-                    url     : me.setFile(req.protocol + '://' + req.get('host') + req.originalUrl, request, fileStream)
+                    url     : me.setFile(req.protocol + '://' + host + basePath, request, fileStream)
                 });
             }
         }).catch(e => {

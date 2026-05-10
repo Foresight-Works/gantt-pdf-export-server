@@ -106,6 +106,45 @@ needing a Node.js environment.
    mkdir /home/rnd/Work/gantt-pdf-export-server/resource
    cp /var/www/html/themes /home/rnd/Work/gantt-pdf-export-server/resource/  
 
+6. **Nginx add 
+
+      location ^~ /exportPdf {
+            proxy_pass https://<server>:9091/;
+            proxy_buffering        off;
+            proxy_request_buffering off;
+
+            proxy_set_header   X-Forwarded-Proto: http;
+            proxy_set_header   X-Real-IP $remote_addr;
+            proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Host $server_name;
+
+
+            proxy_set_header Host              $host;
+
+            client_max_body_size 50m;
+            proxy_read_timeout   600s;
+
+        }
+
+       location ^~ /exportPdf/ {
+            proxy_pass https://<server>:9091/;
+            proxy_buffering        off;
+            proxy_request_buffering off;
+
+            proxy_set_header Host              $host;
+
+            proxy_set_header   X-Forwarded-Proto: http;
+            proxy_set_header   X-Real-IP $remote_addr;
+            proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Host $server_name;
+
+
+            client_max_body_size 50m;
+            proxy_read_timeout   600s;
+
+        }
+
+
 ## Links
 - [Architecture](docs/architecture.md)
 - [Server protocol](docs/protocol.md)

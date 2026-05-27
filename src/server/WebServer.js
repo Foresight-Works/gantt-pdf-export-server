@@ -279,9 +279,14 @@ module.exports = class WebServer extends ExportServer {
                             me.logger.log('verbose', `[WebSocket@${connectionId}] sent ${buf.length} bytes`);
                         }
                         else {
+                            const isLocalhost = host && (host === 'localhost');
+                            const basePath = isLocalhost ? '' : 'exportPdf/';
+                            console.log("URL: ----->", origin + basePath);
+
                             ws.send(JSON.stringify({
                                 success : true,
-                                url     : me.setFile(origin, config, fileStream)
+                                url     : me.setFile(origin + basePath, config, fileStream)
+                                //url     : me.setFile(origin, config, fileStream)
                             }));
                         }
                     }

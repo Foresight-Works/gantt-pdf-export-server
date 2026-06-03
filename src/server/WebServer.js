@@ -280,7 +280,6 @@ module.exports = class WebServer extends ExportServer {
                             me.logger.log('verbose', `[WebSocket@${connectionId}] sent ${buf.length} bytes`);
                         }
                         else {
-                 
                             const isLocalhost = host && (host === 'localhost');
                             const basePath = isLocalhost ? '' : 'exportPdf/';
                             console.log("URL: ----->", origin + basePath);

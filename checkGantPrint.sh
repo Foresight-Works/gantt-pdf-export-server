@@ -10,4 +10,3 @@ else
     cd  /home/rnd/Work/gantt-pdf-export-server
     ./run.sh
 fi
-

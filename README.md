@@ -97,6 +97,46 @@ needing a Node.js environment.
    ```shell
    ./dist/pdf-export-server*
    ```
+3.1 **Run
+      sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test
+      sudo apt install -y g++-11
+      npx puppeteer browsers install chrome
+
+4. **Crontab 
+
+*/10 * * * *  /home/rnd/Work/gantt-pdf-export-server/checkGantPrint.sh >> /home/rnd/Work/gantt-pdf-export-server/log/checkGantPrint.log 2>&1
+
+5. ** Resorce
+   mkdir /home/rnd/Work/gantt-pdf-export-server/resource
+   cp /var/www/html/themes /home/rnd/Work/gantt-pdf-export-server/resource/  
+
+6. **Nginx add 
+
+   location ^~ /exportPdf {
+            proxy_pass https://<server ip>:9091/;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            # WebSocket support (nginx 1.4)
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+
+
+       location ^~ /exportPdf/ {
+            proxy_pass https://<server ip>:9091/;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header Host $host;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+            # WebSocket support (nginx 1.4)
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+
 
 ## Links
 - [Architecture](docs/architecture.md)

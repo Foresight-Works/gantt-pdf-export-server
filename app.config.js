@@ -1,3 +1,4 @@
+
 const path = require('path');
 
 const logPath = process.pkg
@@ -11,10 +12,10 @@ const config = {
     // HTTPS server port
     "https"         : 9091,
 
-    "websocket"     : true,
+    "websocket": true,
 
     // CORS headers are always set, this config defined value for Access-Control-Allow-Origin header
-    "cors"          : "*",
+    "cors": "*",
 
     // Maximum size of the uploaded data
     "maximum"       : "300mb",
@@ -23,10 +24,10 @@ const config = {
     "resources"     : "/resource",
 
     // True to pass `--no-sandbox` flag to the chromium
-    "no-sandbox"    : true,
+    "no-sandbox": true,
 
     // True to disable web security (CORS, CSP, etc)
-    "disable-web-security" : false,
+    "disable-web-security": false,
 
     // Maximum amount of parallel puppeteer instances to run
     "max-workers"   : 10,
@@ -36,22 +37,23 @@ const config = {
     "outputDir"     : '/var/www/html/pdf-output',
 
     // Pass true to wait for page load only (fonts may be missing). Reduces page loading time by at least .5s
-    "quick"          : false,
+    "quick": false,
 
     // Request timeout time in seconds
     "timeout"       : 3000,
 
     // Configuration options for logger
     // Set `false` to output log to the console
-    "logger"        : {
-        "rotate"    : {
-            "dirname"     : logPath,
-            "filename"    : "export-server-%DATE%.log",
-            "datePattern" : "YYYY-MM-DD",
-            "maxSize"     : "20mb",
-            "maxFiles"    : "30d"
+    "logger": {
+        "rotate": {
+            "dirname": logPath,
+            "filename": "export-server-%DATE%.log",
+            "datePattern": "YYYY-MM-DD",
+            "maxSize": "20mb",
+            "maxFiles": "30d"
         }
     }
 };
 
 module.exports = { config };
+

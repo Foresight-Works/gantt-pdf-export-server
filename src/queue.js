@@ -699,7 +699,7 @@ class Worker extends Loggable {
             await page.goto('about:blank');
         }
 
-        await page.setContent(html, { waitUntil : me.waitUntil });
+        await page.setContent(html, { timeout: 0 });
         await page.emulateMediaType('print');
         return page.pdf(config);
     }
@@ -736,7 +736,7 @@ class Worker extends Loggable {
             await page.goto('about:blank');
         }
 
-        await page.setContent(html, { waitUntil : me.waitUntil });
+        await page.setContent(html, { timeout: 0 });
 
         const contentElement = await page.$('.b-export-content');
 

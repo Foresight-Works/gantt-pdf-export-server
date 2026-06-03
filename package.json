@@ -27,7 +27,7 @@
     "url": "github:bryntum/pdf-export-server"
   },
   "scripts": {
-    "start": "node ./src/server.js -h 3010 -m 300mb",
+    "start": "node ./src/server.js --disable-web-security",
     "test": "jest",
     "measure": "node ./src/utils/measure-export-time.js",
     "build": "node ./build.js",

@@ -203,9 +203,15 @@ module.exports = class WebServer extends ExportServer {
             }
             else {
                 //Send the url for the cached file, will is cached for 10 seconds
+		console.log( req, "Request ----->", req.body.clientURL);
+		const host = req.get('host');
+                console.log( "Host ----->", host);
+                const isLocalhost = host && (host === 'localhost' || req.body.clientURL.includes('localhost:'));
+                const basePath = isLocalhost ? '/' : '/exportPdf/';
+                console.log("URL: ----->", req.protocol + '://' + host + basePath);
                 res.status(200).jsonp({
                     success : true,
-                    url     : me.setFile(req.protocol + '://' + req.get('host') + req.originalUrl, request, fileStream)
+                    url     : me.setFile(req.protocol + '://' + host + basePath, request, fileStream)
                 });
             }
         }).catch(e => {
@@ -274,9 +280,15 @@ module.exports = class WebServer extends ExportServer {
                             me.logger.log('verbose', `[WebSocket@${connectionId}] sent ${buf.length} bytes`);
                         }
                         else {
+                 
+                            const isLocalhost = host && (host === 'localhost');
+                            const basePath = isLocalhost ? '' : 'exportPdf/';
+                            console.log("URL: ----->", origin + basePath);
+
                             ws.send(JSON.stringify({
                                 success : true,
-                                url     : me.setFile(origin, config, fileStream)
+                                url     : me.setFile( origin + basePath, config, fileStream)
+                                //url     : me.setFile(origin, config, fileStream)
                             }));
                         }
                     }

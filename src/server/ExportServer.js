@@ -4,11 +4,16 @@ const memoryStreams = require('memory-streams');
 const { joinImages } = require('join-images');
 const { Queue } = require('../queue.js');
 const { getLogger } = require('../logger.js');
-
+ 
+// Heartbeat interval (ms). Must be comfortably under the SHORTEST idle timeout
+// in the path: AWS ALB (default 60s), nginx proxy_read_timeout (default 60s),
+// Cloudflare WebSocket idle (~100s). 30s leaves margin for all three.
+const HEARTBEAT_MS = 30000;
+ 
 module.exports = class ExportServer {
     constructor(config) {
         const { tabs, chromiumArgs, chromiumExecutablePath, logger, testing, quick } = config;
-
+ 
         this.taskQueue = new Queue({
             maxWorkers : config['max-workers'],
             useTabs    : Boolean(tabs),
@@ -17,9 +22,9 @@ module.exports = class ExportServer {
             quick,
             testing
         });
-
+ 
         this.logger = getLogger(logger);
-
+ 
         this.taskQueue.on('log', ({ level, message, id, label }) => {
             // Skip logging deliberate testing exceptions
             if (testing && message?.includes?.('Testing exception')) {
@@ -28,13 +33,13 @@ module.exports = class ExportServer {
             this.logger.log(level, `[${label}@${id}] ${message}`);
         });
     }
-
+ 
     async waitForQueueEvent(eventName) {
         return new Promise(resolve => {
             this.taskQueue.once(eventName, resolve);
         });
     }
-
+ 
     /**
      * Concatenate an array of PDF buffers and return the combined result. This function uses the muhammara package, a
      * copy the muhammara binary is delivered next to the executable.
@@ -44,27 +49,27 @@ module.exports = class ExportServer {
      */
     async combinePdfBuffers(pdfs) {
         const outStream = new memoryStreams.WritableStream();
-
+ 
         try {
             const
                 first     = pdfs.shift(),
                 firstPage = new muhammara.PDFRStreamForBuffer(first),
                 pdfWriter = muhammara.createWriterToModify(firstPage, new muhammara.PDFStreamForResponse(outStream));
-
+ 
             let next = pdfs.shift();
-
+ 
             while (next) {
                 const nextPage = new muhammara.PDFRStreamForBuffer(next);
                 pdfWriter.appendPDFPagesFromPDF(nextPage);
                 next = pdfs.shift();
             }
-
+ 
             pdfWriter.end();
             outStream.end();
-
+ 
             const result = new stream.PassThrough();
             result.end(outStream.toBuffer());
-
+ 
             return result;
         }
         catch (err) {
@@ -72,7 +77,7 @@ module.exports = class ExportServer {
             throw err;
         }
     }
-
+ 
     /**
      * Concatenate an array of Png buffers and return the combined result.
      *
@@ -86,7 +91,39 @@ module.exports = class ExportServer {
         result.end(imageBuffer);
         return result;
     }
-
+ 
+    /**
+     * Start a heartbeat that sends a WebSocket ping frame on the given socket at a
+     * fixed interval, so intermediaries (Cloudflare, AWS ALB, nginx) do not treat a
+     * long-running-but-silent export connection as idle and close it.
+     *
+     * `emitter` is the entity passed in by the connection layer. When it is a raw
+     * `ws` WebSocket it exposes `ping()` and `readyState`/`OPEN`; we guard for that
+     * so this is a no-op when a different emitter (e.g. a plain EventEmitter in
+     * tests) is supplied.
+     *
+     * @param {object} emitter
+     * @returns {NodeJS.Timeout|null} interval handle, or null if pinging is unsupported
+     */
+    startHeartbeat(emitter) {
+        if (!emitter || typeof emitter.ping !== 'function') {
+            return null;
+        }
+ 
+        const OPEN = emitter.OPEN ?? 1;
+ 
+        return setInterval(() => {
+            try {
+                if (emitter.readyState === undefined || emitter.readyState === OPEN) {
+                    emitter.ping();
+                }
+            }
+            catch (err) {
+                this.logger.log('warn', `Heartbeat ping failed: ${err.message}`);
+            }
+        }, HEARTBEAT_MS);
+    }
+ 
     /**
      * Main entry to process an export request. The format of the request object should be:
      *
@@ -111,7 +148,7 @@ module.exports = class ExportServer {
         const
             { html, orientation, format, fileFormat, clientURL } = requestData,
             landscape                                            = orientation === 'landscape';
-
+ 
         if (!html) {
             throw new Error('No html fragments found');
         }
@@ -122,7 +159,7 @@ module.exports = class ExportServer {
                     fileFormat
                 },
                 dimension = format.split('*');
-
+ 
             // dimensions can be set in format 12in*14in. This has precedence over A4, Letter etc
             if (dimension.length === 2) {
                 config.width = /in/.test(dimension[0]) ? dimension[0] : parseInt(dimension[0], 10);
@@ -133,34 +170,47 @@ module.exports = class ExportServer {
                 config.format = format;
                 config.landscape = landscape;
             }
-
+ 
             const me = this;
-
+ 
             const onClose = () => me.taskQueue.dequeue(requestId);
-
+ 
             emitter?.on('close', onClose);
-
-            const files = await this.taskQueue.queue({ requestId, items : html.map(i => i.html), config });
-
-            emitter?.off('close', onClose);
-
-            //All buffers are stored in the files object, we need to concatenate them
-            if (files.length) {
-                let result;
-
-                switch (fileFormat) {
-                    case 'pdf':
-                        result = await this.combinePdfBuffers(files);
-                        break;
-                    case 'png':
-                        result = await this.combinePngBuffers(files);
-                        break;
+ 
+            // Keep the connection alive for the full duration of the export. Without this,
+            // Cloudflare / ALB / nginx close the idle WebSocket mid-export and the resulting
+            // 'close' triggers dequeue -> "Request <id> is cancelled by the client".
+            const heartbeat = me.startHeartbeat(emitter);
+ 
+            try {
+                const files = await this.taskQueue.queue({ requestId, items : html.map(i => i.html), config });
+ 
+                //All buffers are stored in the files object, we need to concatenate them
+                if (files.length) {
+                    let result;
+ 
+                    switch (fileFormat) {
+                        case 'pdf':
+                            result = await this.combinePdfBuffers(files);
+                            break;
+                        case 'png':
+                            result = await this.combinePngBuffers(files);
+                            break;
+                    }
+ 
+                    return result;
                 }
-
-                return result;
+                else {
+                    me.logger.log('error', 'No files found');
+                }
             }
-            else {
-                me.logger.log('error', 'No files found');
+            finally {
+                // Always stop the heartbeat and detach the close listener, whether the
+                // export succeeded, failed, or the socket closed.
+                if (heartbeat) {
+                    clearInterval(heartbeat);
+                }
+                emitter?.off('close', onClose);
             }
         }
     }
